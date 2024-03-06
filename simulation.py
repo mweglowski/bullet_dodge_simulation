@@ -148,6 +148,22 @@ class BulletDodgeSimulation:
 
         return (agent_discretize_position, bullet_discretize_position, bullet_distance)
 
+    def agent_got_hit(self):
+        bullet_x, bullet_y = self.get_nearest_bullet_position()
+        agent_x, agent_y = self.get_agent_position()
+
+        hit = agent_x < bullet_x < agent_x + self.player_size and agent_y < bullet_y < agent_y + self.player_size
+        return hit
+    
+    def bullet_missed_agent(self):
+        closest_bullet = self.get_nearest_bullet_position()
+        bullet_y = closest_bullet[1]
+        agent_x = self.agent_player_x
+        agent_y = SCREEN_HEIGHT - self.player_size
+
+        missed = bullet_y > agent_y and not self.agent_got_hit(closest_bullet, agent_x, agent_y)
+        return missed
+
     def run_game_loop(self):
         while not self.game_over:
             for event in pygame.event.get():
@@ -161,9 +177,13 @@ class BulletDodgeSimulation:
             if keys[pygame.K_RIGHT]:
                 self.update_player("RIGHT")
 
+            # AGENT STATE
+            current_state = self.get_current_state()
+
             # AGENT PLAYER MOVEMENT
-            agent_action = random.choice(["LEFT", "RIGHT", "NONE"])
-            self.update_player(agent_action, agent=True)
+            agent_action = self.agent.choose_action(current_state)
+            action_commands = ["LEFT", "NONE", "RIGHT"]
+            self.update_player(action_commands[agent_action], agent=True)
 
             # ADDING BULLETS
             if should_bullet_spawn(0.1):
@@ -174,6 +194,17 @@ class BulletDodgeSimulation:
             # BULLETS MOVEMENT
             self.update_bullets()
             self.update_bullets(agent=True)
+
+            # CALCULATE REWARD
+            reward = -0.1
+            if self.agent_got_hit():
+                reward = -1
+            elif self.bullet_missed_agent():
+                reward = 1
+
+            # UPDATING AGENT KNOWLEDGE
+            new_state = self.get_current_state()
+            self.agent.update_q_table(current_state, agent_action, reward, new_state)
 
             # SHOWING ELEMENTS
             self.draw_elements()

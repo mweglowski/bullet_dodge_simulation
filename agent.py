@@ -11,9 +11,11 @@ class QLearningAgent:
 
     def choose_action(self, state):
         if np.random.random() < self.epsilon:
-            return np.random.choice(self.n_actions)  # Explore
+            # EXPLORATION
+            return np.random.choice(self.n_actions)
         else:
-            return np.argmax(self.q_table[state])  # Exploit
+            # EXPLOITATION
+            return np.argmax(self.q_table[state])
 
     def update_q_table(self, state, action, reward, next_state):
         best_next_action = np.argmax(self.q_table[next_state])
